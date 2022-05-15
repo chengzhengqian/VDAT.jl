@@ -375,6 +375,7 @@ end
 function constraint_l(l)
     clamp(l,-0.9999,0.9999)
 end
+# ensure g012 is positive
 function constraint_g012(g012)
     if(g012>0.2)
         return g012
@@ -389,6 +390,19 @@ function cal_energy_half_filling_magnetization(U,ϵsσ,nσ,l,β1,β2,g012)
     l=constraint_l(l)
     g012=constraint_g012(g012)
     E,Ek,Eloc,nkσ,d=compute_GN3(ϵsσ,U,nσ,l,[[β1,β2],[β2,β1]],[g012,g012])
+end
+
+function cal_energy_no_magnetization(U,ϵsσ,nσ,l,β1,β2,g012)
+    l=constraint_l(l)
+    g012=constraint_g012(g012)
+    E,Ek,Eloc,nkσ,d=compute_GN3(ϵsσ,U,nσ,l,[[β1,β2],[β1,β2]],[g012,g012])
+end
+
+function cal_energy_half_general(U,ϵsσ,nσ,l,β1up,β2up,β1dn,β2dn,g012up,g012dn)
+    l=constraint_l(l)
+    g012up=constraint_g012(g012up)
+    g012dn=constraint_g012(g012dn)
+    E,Ek,Eloc,nkσ,d=compute_GN3(ϵsσ,U,nσ,l,[[β1up,β2up],[β1dn,β2dn]],[g012up,g012dn])
 end
 
 # para=[-0.2,0.1,0.1,0.4]
@@ -407,6 +421,7 @@ end
 option can be
 half-filling
 hafl-filling-magnetization
+general
 # todo add more situation
 """
 function solve_vdat(U,ϵsσ,nσ,para;option="half-filling")
@@ -414,6 +429,10 @@ function solve_vdat(U,ϵsσ,nσ,para;option="half-filling")
         cal_energy=cal_energy_half_filling
     elseif(option=="half-filling-magnetization")
         cal_energy=cal_energy_half_filling_magnetization
+    elseif(option=="general")
+        cal_energy=cal_energy_half_general
+    elseif(option=="no-magnetization")
+        cal_energy=cal_energy_no_magnetization
     else
         error("unsurpported option $(option) ")
     end
