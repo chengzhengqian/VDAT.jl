@@ -64,7 +64,11 @@ function cal_g12σ(w,g012σ)
     f24=w[2]*w[4]
     f34=w[3]*w[4]
     tσ=[2*(f13+f24),2*(f12+f34)]
-    (4*(tσ.+1).*(g012σ.^2) .+tσ.-1)./(8*g012σ)
+    g12σ=(4*(tσ.+1).*(g012σ.^2) .+tσ.-1)./(8*g012σ)
+    # maybe we should constraint it here?
+    # adjust the cutoff here?
+    # this seems to better solution
+    g12σ=[max(g12σ_,1E-5) for g12σ_ in g12σ]
 end
 
 
@@ -316,6 +320,10 @@ end
 U=1.0
 l is the effective parameter in [-1,1], -1  corresponding the fulling projetion of d , 1 is the opposite limit, 0 is the non-interacting case.
 l=-0.1
+U,E,l,β,g012=para_list[75]
+# we use the potentaiqlly wrong parameter, g012~0.12, d is negative after calcultion
+βσ=[β,β]
+g012σ=[g012,g012]
 """
 function compute_GN3(ϵsσ,U,nσ,l,βσ,g012σ)
     ω=cal_ω(nσ,g012σ)
@@ -378,8 +386,9 @@ end
 # ensure g012 is positive
 # max(0.2,0.1)
 # this is an ad hot solution, as g012 should not be too small. Maybe there is a better way to constraint.
+# right now, we force g012>0.3
 function constraint_g012(g012)
-    g012_cutoff=0.3
+    g012_cutoff=0.1
     if(g012>g012_cutoff)
         return g012
     else

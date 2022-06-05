@@ -35,8 +35,8 @@ saveData(data,"$(data_dir)/U_d_ns_$(nσ[1])_$(nσ[2]).dat")
 
 
 # we do it again
-
-ΔU=0.05
+# it seems that for a given l, there is minimal value of Δl, so that gloc is postive. 
+ΔU=0.01
 para=[-0.17,0.7,0.38]
 para_list=[]
 for U in 1.0:ΔU:10.0
@@ -52,3 +52,6 @@ data=[(0.0,0.25),[(U,load_result(U,nσ,data_dir)[end]) for U in 1.0:ΔU:10.0]...
 saveData(data,"$(data_dir)/U_d_ns_$(nσ[1])_$(nσ[2]).dat")
 
 # now, it seems that there is no problem
+# we 
+# U,E,l,β,g012=para_list[75]
+
