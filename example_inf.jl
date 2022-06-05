@@ -5,6 +5,8 @@ e_fn=gene_spline_band("./es_inf.dat")
 nσ=[0.5,0.5]
 ϵsσ=[gene_ϵs(e_fn,nσ[1]),gene_ϵs(e_fn,nσ[2])]
 para=[-0.17,0.7,0.38]
+# U=1.0
+# @time   para,result=solve_vdat(U,ϵsσ,nσ,para;option="half-filling")
 for U in 1.0:1.0:10.0
     para,result=solve_vdat(U,ϵsσ,nσ,para;option="half-filling")
     save_result(U,ϵsσ,nσ,result,data_dir)
@@ -48,3 +50,6 @@ for U in 1.0:1.0:10.0
     para,result=solve_vdat(U,ϵsσ,nσ,para;option="no-magnetization")
     save_result(U,ϵsσ,nσ,result,data_dir)
 end
+
+
+

@@ -376,12 +376,16 @@ function constraint_l(l)
     clamp(l,-0.9999,0.9999)
 end
 # ensure g012 is positive
+# max(0.2,0.1)
+# this is an ad hot solution, as g012 should not be too small. Maybe there is a better way to constraint.
 function constraint_g012(g012)
-    if(g012>0.2)
+    g012_cutoff=0.3
+    if(g012>g012_cutoff)
         return g012
     else
-        g012=0.2*exp(-(0.2-g012))
-    end    
+        g012=g012_cutoff*2-g012
+    end
+    return g012
 end
 
 
