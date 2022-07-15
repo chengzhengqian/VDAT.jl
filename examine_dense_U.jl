@@ -4,7 +4,12 @@ include("./vdat.jl")
 data_dir="./data_inf_dense"
 mkdir(data_dir)
 
+# integrate(e_fn,0.0,0.5)*4
+# find non-interacitng value
 e_fn=gene_spline_band("./es_inf.dat")
+find_zero(x->e_fn(x)+0.2,0.5)
+find_zero(x->e_fn(x)+0.6,0.5)
+find_zero(x->e_fn(x)+1.0,0.5)
 nσ=[0.5,0.5]
 ϵsσ=[gene_ϵs(e_fn,nσ[1]),gene_ϵs(e_fn,nσ[2])]
 para=[-0.17,0.7,0.38]

@@ -127,13 +127,32 @@ function check_Δs(nσ,g012σ,l)
 end
 
 """
+ασ_=ασ[1]
+βσ_=βσ[1]
+ϵfσ_=ϵfσ[1]
+nkσ[1]
+"""
+function compute_Z(ασ_,βσ_,ϵfσ_)
+    function compute_nϵ(α,β,ϵ)
+        0.5*(1+ (α-ϵ)/sqrt((α-ϵ)^2+β^2))
+    end
+    compute_nϵ(ασ_[1],βσ_[1],ϵfσ_)-compute_nϵ(ασ_[2],βσ_[2],ϵfσ_)
+end
+
+
+"""
 this is for either below and above the fermi surface
 we test for the region below the fermi surface first.
 nk_mean=1-Δσ[1]/nσ[1]
 β=0.1
 ϵs_=ϵs[1]
+ϵs_=ϵsσ[1][1]
+nk_mean=0.9
+β_=2.0
 α=0.3
+cal_nk_A(nk_mean,β_,ϵs_)
 for a particular spin orbital and region
+now, we also return α
 """
 function cal_nk_A(nk_mean,β_,ϵs_)
     function compute_nk(α)
@@ -152,15 +171,18 @@ function cal_nk_A(nk_mean,β_,ϵs_)
     end    
     nk=compute_nk(α)
     A=mean(sqrt.(nk.*(1 .- nk)))
-    nk,A
+    nk,A,α
 end
 
 """
 for both below and above for a given spin
 nσ_=nσ[1]
 Δσ_=Δσ[1]
+Δσ_=0.1
 β=[0.1,0.1]
-nk,A=cal_nk_A_full(nσ_,Δσ_,β,ϵs)
+ϵs=ϵsσ[1]
+nk,A,α=cal_nk_A_full(nσ_,Δσ_,β,ϵs)
+# we add α now
 """
 function cal_nk_A_full(nσ_,Δσ_,β,ϵs)
     Δσ_max=(1-nσ_)*nσ_
@@ -173,27 +195,28 @@ function cal_nk_A_full(nσ_,Δσ_,β,ϵs)
     nk_mean_below=1-Δσ_/nσ_
     β_below=β[1]
     ϵs_below=ϵs[1]
-    nk_below,A_below=cal_nk_A(nk_mean_below,β_below,ϵs_below)
+    nk_below,A_below,α_below=cal_nk_A(nk_mean_below,β_below,ϵs_below)
     nk_mean_above=Δσ_/(1-nσ_)
     β_above=β[2]
     ϵs_above=ϵs[2]
-    nk_above,A_above=cal_nk_A(nk_mean_above,β_above,ϵs_above)
-    [nk_below,nk_above],[A_below,A_above]
+    nk_above,A_above,α_above=cal_nk_A(nk_mean_above,β_above,ϵs_above)
+    [nk_below,nk_above],[A_below,A_above],[α_below,α_above]
 end
 
 """
 # frist, for each spin, second, for each region
 βσ=[β,β]
 ϵsσ has the same structure
-nkσ,A_below_σ,A_above_σ=cal_nk_A_σ(nσ,Δσ,βσ,ϵsσ)
+Δσ=[0.1,0.1]
+nkσ,A_below_σ,A_above_σ,ασ=cal_nk_A_σ(nσ,Δσ,βσ,ϵsσ)
 """
 function cal_nk_A_σ(nσ,Δσ,βσ,ϵsσ)
-    nk_up,A_up=cal_nk_A_full(nσ[1],Δσ[1],βσ[1],ϵsσ[1])
-    nk_dn,A_dn=cal_nk_A_full(nσ[2],Δσ[2],βσ[2],ϵsσ[2])
+    nk_up,A_up,α_up=cal_nk_A_full(nσ[1],Δσ[1],βσ[1],ϵsσ[1])
+    nk_dn,A_dn,α_dn=cal_nk_A_full(nσ[2],Δσ[2],βσ[2],ϵsσ[2])
     nkσ=[nk_up,nk_dn]
     A_below_σ=[A_up[1],A_dn[1]]
     A_above_σ=[A_up[2],A_dn[2]]
-    nkσ,A_below_σ,A_above_σ
+    nkσ,A_below_σ,A_above_σ,[α_up,α_dn]
 end
 
 """
@@ -324,6 +347,7 @@ U,E,l,β,g012=para_list[75]
 # we use the potentaiqlly wrong parameter, g012~0.12, d is negative after calcultion
 βσ=[β,β]
 g012σ=[g012,g012]
+compute_GN3(ϵsσ,U,nσ,l,βσ,g012σ)
 """
 function compute_GN3(ϵsσ,U,nσ,l,βσ,g012σ)
     ω=cal_ω(nσ,g012σ)
@@ -336,7 +360,7 @@ function compute_GN3(ϵsσ,U,nσ,l,βσ,g012σ)
     g12σ=cal_g12σ(w,g012σ)
     sσ=cal_sσ(nσ,g012σ,g12σ)
     Δσ=cal_Δσ(sσ,g12σ)
-    nkσ,A_below_σ,A_above_σ=cal_nk_A_σ(nσ,Δσ,βσ,ϵsσ)
+    nkσ,A_below_σ,A_above_σ,ασ=cal_nk_A_σ(nσ,Δσ,βσ,ϵsσ)
     g13σ,g23σ,g31σ,g32σ=cal_g_other_components(sσ,A_below_σ,A_above_σ,nσ)
     g0othersup=cal_g0_other_components_given_spin(g012σ[1],nσ[1],g12σ[1],g13σ[1],g23σ[1],g31σ[1],g32σ[1])
     g0othersdn=cal_g0_other_components_given_spin(g012σ[2],nσ[2],g12σ[2],g13σ[2],g23σ[2],g31σ[2],g32σ[2])
@@ -346,7 +370,7 @@ function compute_GN3(ϵsσ,U,nσ,l,βσ,g012σ)
     Ek=sum([( nσ[i]*mean(nkσ[i][1].*ϵsσ[i][1]) +(1-nσ[i])*mean(nkσ[i][2].*ϵsσ[i][2]) ) for i in 1:2  ])
     Eloc=U*d
     E=Ek+Eloc
-    E,Ek,Eloc,nkσ,d
+    E,Ek,Eloc,nkσ,d,ασ,βσ
 end
 
 # nσ=[0.5,0.5]
@@ -387,6 +411,9 @@ end
 # max(0.2,0.1)
 # this is an ad hot solution, as g012 should not be too small. Maybe there is a better way to constraint.
 # right now, we force g012>0.3
+"""
+constraint_g012(0.09)
+"""
 function constraint_g012(g012)
     g012_cutoff=0.1
     if(g012>g012_cutoff)
@@ -402,20 +429,25 @@ end
 function cal_energy_half_filling_magnetization(U,ϵsσ,nσ,l,β1,β2,g012)
     l=constraint_l(l)
     g012=constraint_g012(g012)
-    E,Ek,Eloc,nkσ,d=compute_GN3(ϵsσ,U,nσ,l,[[β1,β2],[β2,β1]],[g012,g012])
+    compute_GN3(ϵsσ,U,nσ,l,[[β1,β2],[β2,β1]],[g012,g012])
 end
 
 function cal_energy_no_magnetization(U,ϵsσ,nσ,l,β1,β2,g012)
     l=constraint_l(l)
     g012=constraint_g012(g012)
-    E,Ek,Eloc,nkσ,d=compute_GN3(ϵsσ,U,nσ,l,[[β1,β2],[β1,β2]],[g012,g012])
+    compute_GN3(ϵsσ,U,nσ,l,[[β1,β2],[β1,β2]],[g012,g012])
 end
 
+"""
+U=1.0
+ϵsσ=[gene_ϵs(e_fn,nσ[1]),gene_ϵs(e_fn,nσ[2])]
+l,β1up,β2up,β1dn,β2dn,g012up,g012dn=-0.02,0.6,0.6,0.6,0.6,0.38,0.38
+"""
 function cal_energy_half_general(U,ϵsσ,nσ,l,β1up,β2up,β1dn,β2dn,g012up,g012dn)
     l=constraint_l(l)
     g012up=constraint_g012(g012up)
     g012dn=constraint_g012(g012dn)
-    E,Ek,Eloc,nkσ,d=compute_GN3(ϵsσ,U,nσ,l,[[β1up,β2up],[β1dn,β2dn]],[g012up,g012dn])
+    compute_GN3(ϵsσ,U,nσ,l,[[β1up,β2up],[β1dn,β2dn]],[g012up,g012dn])
 end
 
 # para=[-0.2,0.1,0.1,0.4]
@@ -460,12 +492,17 @@ end
 # mkdir("./data")
 
 
-function save_result(U,ϵsσ,nσ,result,data_dir)
-    E,Ek,Eloc,nkσ,d=result
+function save_result(U,ϵsσ,nσ,ϵfσ,result,data_dir)
+    # E,Ek,Eloc,nkσ,d=result
+    E,Ek,Eloc,nkσ,d,ασ,βσ=result
+    Z_up=compute_Z(ασ[1],βσ[1],ϵfσ[1])
+    Z_dn=compute_Z(ασ[2],βσ[2],ϵfσ[2])
     filename_base="$(data_dir)/U_$(U)_ns_$(nσ[1])_$(nσ[2])"
     filename_energy="$(filename_base)_E_Ek_Eloc_d.dat"
+    filename_Z="$(filename_base)_Z.dat"
     filename_nk_up="$(filename_base)_nk_spin_up.dat"
     filename_nk_dn="$(filename_base)_nk_spin_dn.dat"
+    saveData([Z_up,Z_dn],filename_Z)
     saveData([E,Ek,Eloc,d],filename_energy)
     nk_up=[nkσ[1][1]...,nkσ[1][2]...]
     ϵs_up=[ϵsσ[1][1]...,ϵsσ[1][2]...]
@@ -478,7 +515,8 @@ end
 function load_result(U,nσ,data_dir)
     filename_base="$(data_dir)/U_$(U)_ns_$(nσ[1])_$(nσ[2])"
     filename_energy="$(filename_base)_E_Ek_Eloc_d.dat"
-    loadData(filename_energy)
+    filename_Z="$(filename_base)_Z.dat"
+    [loadData(filename_energy)...,loadData(filename_Z)...]
 end
 
 
