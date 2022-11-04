@@ -383,9 +383,38 @@ function cal_w_scaled(x,nασ,G12ασ)
     k0,knorm=cal_k0_knorm(k)
     kmax=cal_maxnorm(w02,k0)
     # we regulate
-    knormscaled=kmax*tanh(knorm/kmax)
+    # knormscaled=kmax*tanh(knorm/kmax)
+    knormscaled=regulate(knorm,kmax)
     kscaled=k0*knormscaled
     w=sqrt.(kscaled+w02)
+end
+"""
+here, we try a different version to constriant w
+"""
+function cal_w_scaled_v2(x,nασ,G12ασ)
+    neffασ=cal_neffασ(nασ,G12ασ)
+    w02=cal_w02(neffασ)
+    N_spin_orbital=length(neffασ)
+    VΓη,ηToIdx=__global_VΓη_ηToIdx__[N_spin_orbital]
+    k=VΓη*x
+    k0,knorm=cal_k0_knorm(k)
+    kmax=cal_maxnorm(w02,k0)
+    # we regulate
+    knormscaled=kmax*tanh(knorm/kmax)
+    # knormscaled=regulate(knorm,kmax)
+    kscaled=k0*knormscaled
+    w=sqrt.(kscaled+w02)
+end
+
+"""
+we try the previous version
+"""
+function regulate(k,kmax)
+    if(k>kmax)
+        kmax*exp(-(k-kmax))
+    else
+        k
+    end    
 end
 
 
@@ -448,7 +477,18 @@ gradient(x->cal_Slocασ(nασ,G12ασ,x)[2][1],g12ασ)
 """
 function cal_Slocασ(nασ,G12ασ,g12ασ)
     N_spin_orbital=length(nασ)
-    [cal_sloc11sloc12(nασ[idx],G12ασ[idx],g12ασ[idx]) for idx in 1:N_spin_orbital]
+    # [cal_sloc11sloc12(nασ[idx],G12ασ[idx],g12ασ[idx]) for idx in 1:N_spin_orbital]
+    cal_Slocασ_safe_.(nασ,G12ασ,g12ασ)
+end
+
+"""
+ensure that Sloc are positive
+nασ_=nασ[1]
+G12ασ_=G12ασ[1]
+g12ασ_=g12ασ[1]
+"""
+function cal_Slocασ_safe_(nασ_,G12ασ_,g12ασ_)
+    max.(cal_sloc11sloc12(nασ_,G12ασ_,g12ασ_),1e-6)
 end
 
 
@@ -607,12 +647,15 @@ function cal_momentum_part_in_nβ(nασ,G12ασ,x,βασ,eασ)
     Δασ=cal_Δασ(g12ασ,Slocασ)
     # we will compute the seperatly the below and above seperately
     # we add them, so don't need another function
+    # we also add βασ_below and above so it is easier when write the energy differentiaion
     nkασ_below=[]
     nkασ_above=[]
     nασ_below=nασ-Δασ
     nασ_above=Δασ
     αασ_below=[]
     αασ_above=[]
+    βασ_below=[]
+    βασ_above=[]
     Aασ_below=[]
     Aασ_above=[]
     Kασ_below=[]
@@ -627,11 +670,13 @@ function cal_momentum_part_in_nβ(nασ,G12ασ,x,βασ,eασ)
     ∂Aασ∂βX_above=[]
     # i=1
     for i in 1:N_spin_orbital
-        αασ_below_=solve_αX_from_nX(eασ[i][1],nασ_below[i],βασ[i][1],nασ[i])
+        βασ_below_=βασ[i][1]
+        αασ_below_=solve_αX_from_nX(eασ[i][1],nασ_below[i],βασ_below_,nασ[i])
         para_below=(eασ[i][1],αασ_below_,βασ[i][1],nασ[i])
         dKbelowdn_,dKbelowdβ_,dAbelowdn_,dAbelowdβ_=cal_dKX_dAX_dnβ(para_below...)
         nασ_below_,Aασ_below_,Kασ_below_,nkασ_below_=cal_nX_AX_KX_nkX(para_below...)
-        αασ_above_=solve_αX_from_nX(eασ[i][2],nασ_above[i],βασ[i][2],1.0-nασ[i])
+        βασ_above_=βασ[i][2]
+        αασ_above_=solve_αX_from_nX(eασ[i][2],nασ_above[i],βασ_above_,1.0-nασ[i])
         para_above=(eασ[i][2],αασ_above_,βασ[i][2],1.0-nασ[i])
         dKabovedn_,dKabovedβ_,dAabovedn_,dAabovedβ_=cal_dKX_dAX_dnβ(para_above...)
         nασ_above_,Aασ_above_,Kασ_above_,nkασ_above_=cal_nX_AX_KX_nkX(para_above...)
@@ -639,6 +684,8 @@ function cal_momentum_part_in_nβ(nασ,G12ασ,x,βασ,eασ)
         push!(nkασ_above,nkασ_above_)
         push!(αασ_below,αασ_below_)
         push!(αασ_above,αασ_above_)
+        push!(βασ_below,βασ_below_)
+        push!(βασ_above,βασ_above_)
         push!(Aασ_below,Aασ_below_)
         push!(Aασ_above,Aασ_above_)
         push!(Kασ_below,Kασ_below_)
@@ -652,8 +699,85 @@ function cal_momentum_part_in_nβ(nασ,G12ασ,x,βασ,eασ)
         push!(∂Aασ∂βX_below,dAbelowdβ_)
         push!(∂Aασ∂βX_above,dAabovedβ_)
     end
-    (Δασ,nασ_below,nασ_above,αασ_below,αασ_above,nkασ_below,nkασ_above,Aασ_below,Aασ_above,Kασ_below,Kασ_above,∂Kασ∂nX_below,∂Kασ∂nX_above,∂Kασ∂βX_below,∂Kασ∂βX_above,∂Aασ∂nX_below,∂Aασ∂nX_above,∂Aασ∂βX_below,∂Aασ∂βX_above)
+    (nασ,Δασ,nασ_below,nασ_above,αασ_below,αασ_above,βασ_below,βασ_above,nkασ_below,nkασ_above,Aασ_below,Aασ_above,Kασ_below,Kασ_above,∂Kασ∂nX_below,∂Kασ∂nX_above,∂Kασ∂βX_below,∂Kασ∂βX_above,∂Aασ∂nX_below,∂Aασ∂nX_above,∂Aασ∂βX_below,∂Aασ∂βX_above)
 end
+
+function restrict_G12ασ(G12ασ)
+    min.(G12ασ,0.5-1e-5)
+end
+
+
+"""
+we may also want to restrict G12ασ
+"""
+function cal_momentum_part_in_nβ_v2(nασ,G12ασ,x,βασ,eασ)
+    N_spin_orbital=length(nασ)
+    # we add restriction of G12ασ
+    G12ασ=restrict_G12ασ(G12ασ)
+    w=cal_w_scaled_v2(x,nασ,G12ασ)
+    pmatwασ,g12matwSασ=cal_p_g12_mat(G12ασ)
+    g12ασ=[expt(w,cal_Xmatfull(pmatwασ,g12matwSασ,i)) for i in 1:N_spin_orbital]
+    Slocασ=cal_Slocασ(nασ,G12ασ,g12ασ)
+    # we update to easure the range of Δασ
+    # Δασ=cal_Δασ(g12ασ,Slocασ)
+    Δασ=cal_Δασ_safe(g12ασ,Slocασ,nασ)
+    # we will compute the seperatly the below and above seperately
+    # we add them, so don't need another function
+    # we also add βασ_below and above so it is easier when write the energy differentiaion
+    nkασ_below=[]
+    nkασ_above=[]
+    nασ_below=nασ-Δασ
+    nασ_above=Δασ
+    αασ_below=[]
+    αασ_above=[]
+    βασ_below=[]
+    βασ_above=[]
+    Aασ_below=[]
+    Aασ_above=[]
+    Kασ_below=[]
+    Kασ_above=[]
+    ∂Kασ∂nX_below=[]
+    ∂Kασ∂nX_above=[]
+    ∂Kασ∂βX_below=[]
+    ∂Kασ∂βX_above=[]
+    ∂Aασ∂nX_below=[]
+    ∂Aασ∂nX_above=[]
+    ∂Aασ∂βX_below=[]
+    ∂Aασ∂βX_above=[]
+    # i=1
+    for i in 1:N_spin_orbital
+        βασ_below_=βασ[i][1]
+        αασ_below_=solve_αX_from_nX(eασ[i][1],nασ_below[i],βασ_below_,nασ[i])
+        para_below=(eασ[i][1],αασ_below_,βασ[i][1],nασ[i])
+        dKbelowdn_,dKbelowdβ_,dAbelowdn_,dAbelowdβ_=cal_dKX_dAX_dnβ(para_below...)
+        nασ_below_,Aασ_below_,Kασ_below_,nkασ_below_=cal_nX_AX_KX_nkX(para_below...)
+        βασ_above_=βασ[i][2]
+        αασ_above_=solve_αX_from_nX(eασ[i][2],nασ_above[i],βασ_above_,1.0-nασ[i])
+        para_above=(eασ[i][2],αασ_above_,βασ[i][2],1.0-nασ[i])
+        dKabovedn_,dKabovedβ_,dAabovedn_,dAabovedβ_=cal_dKX_dAX_dnβ(para_above...)
+        nασ_above_,Aασ_above_,Kασ_above_,nkασ_above_=cal_nX_AX_KX_nkX(para_above...)
+        push!(nkασ_below,nkασ_below_)
+        push!(nkασ_above,nkασ_above_)
+        push!(αασ_below,αασ_below_)
+        push!(αασ_above,αασ_above_)
+        push!(βασ_below,βασ_below_)
+        push!(βασ_above,βασ_above_)
+        push!(Aασ_below,Aασ_below_)
+        push!(Aασ_above,Aασ_above_)
+        push!(Kασ_below,Kασ_below_)
+        push!(Kασ_above,Kασ_above_)
+        push!(∂Kασ∂nX_below,dKbelowdn_)
+        push!(∂Kασ∂nX_above,dKabovedn_)
+        push!(∂Kασ∂βX_below,dKbelowdβ_)
+        push!(∂Kασ∂βX_above,dKabovedβ_)
+        push!(∂Aασ∂nX_below,dAbelowdn_)
+        push!(∂Aασ∂nX_above,dAabovedn_)
+        push!(∂Aασ∂βX_below,dAbelowdβ_)
+        push!(∂Aασ∂βX_above,dAabovedβ_)
+    end
+    (nασ,Δασ,nασ_below,nασ_above,αασ_below,αασ_above,βασ_below,βασ_above,nkασ_below,nkασ_above,Aασ_below,Aασ_above,Kασ_below,Kασ_above,∂Kασ∂nX_below,∂Kασ∂nX_above,∂Kασ∂βX_below,∂Kασ∂βX_above,∂Aασ∂nX_below,∂Aασ∂nX_above,∂Aασ∂βX_below,∂Aασ∂βX_above)
+end
+
 
 
 """
@@ -669,6 +793,30 @@ function cal_Δασ(g12ασ,Slocασ)
 end
 
 """
+ensure Δασ is in reasoable
+restrict_Δασ_(-0.1,0.1)
+"""
+function restrict_Δασ_(Δασ_,nασ_)
+    if(Δασ_<1e-4)
+        return 1e-4
+    elseif(Δασ_>nασ_-1e-4)
+        return nασ_-1e-4
+    end
+    return Δασ_
+end
+
+
+"""
+ensure the Δασ is reasoble
+"""
+function cal_Δασ_safe(g12ασ,Slocασ,nασ)
+    N_spin_orbital=length(g12ασ)
+    # [ cal_delta(g12ασ[idx],Slocασ[idx]...) for idx in 1:N_spin_orbital]
+    [ restrict_Δασ_(cal_delta(g12ασ[idx],Slocασ[idx][1],Slocασ[idx][2]),nασ[idx]) for idx in 1:N_spin_orbital]
+end
+
+
+"""
 nασ_=nασ[1]
 Δασ_=Δασ[1]
 # βbelow,βabove
@@ -682,10 +830,17 @@ Aασ_,αασ_,nk_=cal_Aασ_αασ_nk_(nασ_,Δασ_,βασ_,eασ_)
 # we also need to compute kinetic energy
 # I guess once we put nk to the cal_momentum_part_in_nβ, we actually don't need it
 # remove this in future!!
+# we keep it for benchmark
+# we add constraint
 """
 function cal_Aασ_αασ_nk_(nασ_,Δασ_,βασ_,eασ_)
     βbelow,βabove=βασ_
     ebelow,eabove=eασ_
+    if(Δασ_<1e-4)
+        Δασ_=1e-4
+    elseif(Δασ_>nασ_-1e-4)
+        Δασ_=nασ_-1e-4
+    end    
     nbelow=nασ_-Δασ_
     nabove=Δασ_
     αbelow=solve_αX_from_nX(ebelow,nbelow,βbelow,nασ_)
@@ -725,18 +880,30 @@ end
 to make it easy for automatic differnentiaion, one may want to explicit list the arguments
 we use the new scheme, split A to below and above,
 #remove this function in future
+!! we keep it for benchmark
+we add debug for numerical minimization
 """
 function cal_Gfull(nασ_,G12ασ_,g12ασ_,Aασ_,Slocασ_)
     # glocReduced=cal_glocReducedInA(Abelow,Aabove,sloc11,sloc12)
     # # [gloc[1,3],gloc[2,3],gloc[3,1],gloc[3,2]].-glocReduced
     # gextraασ_=cal_glocReducedInA(Aασ_...,Slocασ_...)
-    gextraασ_=cal_glocReducedInA(Aασ_[1],Aασ_[2],Slocασ_[1],Slocασ_[2])
     # cal_g0IngG12(nloc,g012,g12,g13,g23,g31,g32)
     # Gloc_=cal_g0IngG12(nασ_,G12ασ_,g12ασ_,gextraασ_...)
     # Gfullασ_check=[Gloc_[1,2],Gloc_[1,3],Gloc_[2,3],Gloc_[3,1],Gloc_[3,2],Gloc_[3,3]]
     # we could combine this to one function
     # Gfullασ_=cal_g0fullIngG12(nασ_,G12ασ_,g12ασ_,gextraασ_...)
-    Gfullασ_=cal_g0fullIngG12(nασ_,G12ασ_,g12ασ_,gextraασ_[1],gextraασ_[2],gextraασ_[3],gextraασ_[4])
+    local Gfullασ_
+    try
+        # we should make should Slocασ[2]  is not zero
+        if(Slocασ_[2]<1e-6)
+            Slocασ_[2]=1e-6
+        end        
+        gextraασ_=cal_glocReducedInA(Aασ_[1],Aασ_[2],Slocασ_[1],Slocασ_[2])
+        Gfullασ_=cal_g0fullIngG12(nασ_,G12ασ_,g12ασ_,gextraασ_[1],gextraασ_[2],gextraασ_[3],gextraασ_[4])
+    catch e
+        error("call call_Gfull with $([nασ_,G12ασ_,g12ασ_,Aασ_,Slocασ_]) \n")
+    end
+    Gfullασ_
     # Gfullασ_.-Gfullασ_check # we checked, it is correct
 end
 
@@ -747,7 +914,8 @@ function cal_Gfull(nασ_,G12ασ_,g12ασ_,Aασ_below_,Aασ_above_,Slocασ_)
     # glocReduced=cal_glocReducedInA(Abelow,Aabove,sloc11,sloc12)
     # # [gloc[1,3],gloc[2,3],gloc[3,1],gloc[3,2]].-glocReduced
     # gextraασ_=cal_glocReducedInA(Aασ_...,Slocασ_...)
-    gextraασ_=cal_glocReducedInA(Aασ_[1],Aασ_[2],Slocασ_[1],Slocασ_[2])
+    # gextraασ_=cal_glocReducedInA(Aασ_[1],Aασ_[2],Slocασ_[1],Slocασ_[2])
+    gextraασ_=cal_glocReducedInA(Aασ_below_,Aασ_above_,Slocασ_[1],Slocασ_[2])
     # cal_g0IngG12(nloc,g012,g12,g13,g23,g31,g32)
     # Gloc_=cal_g0IngG12(nασ_,G12ασ_,g12ασ_,gextraασ_...)
     # Gfullασ_check=[Gloc_[1,2],Gloc_[1,3],Gloc_[2,3],Gloc_[3,1],Gloc_[3,2],Gloc_[3,3]]
@@ -779,6 +947,7 @@ es=gene_ϵs(e_fn,nασ[1])
 eασ_=es
 eασ=[ es for _ in 1:N_spin_orbital]
 αασ,Δασ,Aασ,K0,∂K∂Δασ,∂K∂Aασ=cal_momemtum_part(nασ,G12ασ,x,βασ,eασ)
+# we use the new scheme, remove this function in future
 """
 function cal_momemtum_part(nασ,G12ασ,x,βασ,eασ)
     N_spin_orbital=length(nασ)
@@ -820,8 +989,10 @@ format
 [(idx1,idx2,coupling)...]
 cal_energy_for_diff(G12ασ,x,Aασ,nασ,∂K∂Δασ,∂K∂Aασ,interaction)
 gradient((G12ασ,x,Aασ)->cal_energy_for_diff(G12ασ,x,Aασ,nασ,∂K∂Δασ,∂K∂Aασ,interaction),G12ασ,x,Aασ)
+this is old, we use the new scheme
+# delete it in future !!
 """
-function cal_energy_for_diff(G12ασ,x,Aασ,nασ,∂K∂Δασ,∂K∂Aασ,interaction)
+function cal_energy_for_diff_old(G12ασ,x,Aασ,nασ,∂K∂Δασ,∂K∂Aασ,interaction)
     N_spin_orbital=length(nασ)
     w=cal_w(x,nασ,G12ασ)
     pmatwασ,g12matwSασ=cal_p_g12_mat(G12ασ)
@@ -835,6 +1006,186 @@ function cal_energy_for_diff(G12ασ,x,Aασ,nασ,∂K∂Δασ,∂K∂Aασ,in
     Eloc=sum([coefficient*expt(w,cal_Xmatfull(pmatwασ,g33matwασ,idx1,idx2)) for (idx1,idx2,coefficient) in interaction ])
     Eloc+dK_from_Δ+dK_from_A
 end
+
+"""
+new version
+scale the w2, so x is free variable now
+use nX,βX to parametrize the momentum part, i.e expand K, A to first order  
+so we numerical derivatives should be strictly same as the automatically differentiation
+# (nασ,Δασ,nασ_below,nασ_above,αασ_below,αασ_above,nkασ_below,nkασ_above,Aασ_below,Aασ_above,Kασ_below,Kασ_above,∂Kασ∂nX_below,∂Kασ∂nX_above,∂Kασ∂βX_below,∂Kασ∂βX_above,∂Aασ∂nX_below,∂Aασ∂nX_above,∂Aασ∂βX_below,∂Aασ∂βX_above)=cal_momentum_part_in_nβ(nασ,G12ασ,x,βασ,eασ)
+# we add β
+(nασ,Δασ,nασ_below,nασ_above,αασ_below,αασ_above,βασ_below,βασ_above,nkασ_below,nkασ_above,Aασ_below,Aασ_above,Kασ_below,Kασ_above,∂Kασ∂nX_below,∂Kασ∂nX_above,∂Kασ∂βX_below,∂Kασ∂βX_above,∂Aασ∂nX_below,∂Aασ∂nX_above,∂Aασ∂βX_below,∂Aασ∂βX_above)=cal_momentum_part_in_nβ(nασ,G12ασ,x,βασ,eασ)
+momentum_info=cal_momentum_part_in_nβ(nασ,G12ασ,x,βασ,eασ)
+# this is fixed throught the calcuation
+notice nασ is in momemtum_info, so are fixed by construction
+
+U=1.0
+interaction=[(1,2,U),(1,3,U),(1,4,U),(2,3,U),(2,4,U),(3,4,U)]
+format
+[(idx1,idx2,coupling)...]
+@time gradient((G12ασ,x,βασ)->cal_total_energy(G12ασ,x,βασ,momentum_info,interaction),G12ασ,x,βασ)
+
+"""
+function cal_total_energy(G12ασ,x,βασ,momentum_info,interaction)
+    (nασ,Δασ,nασ_below,nασ_above,αασ_below,αασ_above,βασ_below,βασ_above,nkασ_below,nkασ_above,Aασ_below,Aασ_above,Kασ_below,Kασ_above,∂Kασ∂nX_below,∂Kασ∂nX_above,∂Kασ∂βX_below,∂Kασ∂βX_above,∂Aασ∂nX_below,∂Aασ∂nX_above,∂Aασ∂βX_below,∂Aασ∂βX_above)=momentum_info
+    # this is the fixed value, as denoted as star in notes, here, we just keep the name, but add _track (if we will use the same variable) to the value (zeroth order are same) computed in the procedure, so the automatically differentialion then can properly backpropagate teh derivatives from the momentum info
+    N_spin_orbital=length(nασ)
+    w=cal_w_scaled(x,nασ,G12ασ)
+    pmatwασ,g12matwSασ=cal_p_g12_mat(G12ασ)
+    g12ασ=[expt(w,cal_Xmatfull(pmatwασ,g12matwSασ,i)) for i in 1:N_spin_orbital]
+    Slocασ=cal_Slocασ(nασ,G12ασ,g12ασ)
+    K0=sum(Kασ_below)+sum(Kασ_above)
+    Δασ_track=cal_Δασ(g12ασ,Slocασ) # Δασ_track-Δασ
+    nασ_below_track=nασ-Δασ_track # nασ_below_track-nασ_below
+    nασ_above_track=Δασ_track   #  nασ_above_track-nασ_above
+    δnασ_below=nασ_below_track-nασ_below
+    δnασ_above=nασ_above_track-nασ_above
+    βασ_below_track=[βασ_[1] for βασ_ in βασ]
+    βασ_above_track=[βασ_[2] for βασ_ in βασ]
+    δβασ_below=βασ_below_track-βασ_below
+    δβασ_above=βασ_above_track-βασ_above
+    # we then compute the change of δβ
+    # we use dot to sum, so we drop ασ
+    δK_below=dot(∂Kασ∂nX_below,δnασ_below)+dot(∂Kασ∂βX_below,δβασ_below)
+    δK_above=dot(∂Kασ∂nX_above,δnασ_above)+dot(∂Kασ∂βX_above,δβασ_above)
+    δK=δK_below+δK_above
+    K_track=K0+δK
+    # now, we need to track A  part, Aασ_below
+    Aασ_below_track=Aασ_below + ∂Aασ∂nX_below.*δnασ_below + ∂Aασ∂βX_below.*δβασ_below
+    Aασ_above_track=Aασ_above + ∂Aασ∂nX_above.*δnασ_above + ∂Aασ∂βX_above.*δβασ_above
+    g33matwασ=[cal_g33_mat_(cal_Gfull(nασ[i],G12ασ[i],g12ασ[i],Aασ_below_track[i],Aασ_above_track[i],Slocασ[i])) for i in 1:N_spin_orbital]
+    Eloc=sum([coefficient*expt(w,cal_Xmatfull(pmatwασ,g33matwασ,idx1,idx2)) for (idx1,idx2,coefficient) in interaction ])
+    E=Eloc+K_track
+end
+"""
+we add restriction of G12ασ
+"""
+function cal_total_energy_v2(G12ασ,x,βασ,momentum_info,interaction)
+    (nασ,Δασ,nασ_below,nασ_above,αασ_below,αασ_above,βασ_below,βασ_above,nkασ_below,nkασ_above,Aασ_below,Aασ_above,Kασ_below,Kασ_above,∂Kασ∂nX_below,∂Kασ∂nX_above,∂Kασ∂βX_below,∂Kασ∂βX_above,∂Aασ∂nX_below,∂Aασ∂nX_above,∂Aασ∂βX_below,∂Aασ∂βX_above)=momentum_info
+    # this is the fixed value, as denoted as star in notes, here, we just keep the name, but add _track (if we will use the same variable) to the value (zeroth order are same) computed in the procedure, so the automatically differentialion then can properly backpropagate teh derivatives from the momentum info
+    N_spin_orbital=length(nασ)
+    # we add restriction of G12ασ
+    G12ασ=restrict_G12ασ(G12ασ)
+    w=cal_w_scaled_v2(x,nασ,G12ασ)
+    pmatwασ,g12matwSασ=cal_p_g12_mat(G12ασ)
+    g12ασ=[expt(w,cal_Xmatfull(pmatwασ,g12matwSασ,i)) for i in 1:N_spin_orbital]
+    Slocασ=cal_Slocασ(nασ,G12ασ,g12ασ)
+    K0=sum(Kασ_below)+sum(Kασ_above)
+    Δασ_track=cal_Δασ(g12ασ,Slocασ) # Δασ_track-Δασ
+    nασ_below_track=nασ-Δασ_track # nασ_below_track-nασ_below
+    nασ_above_track=Δασ_track   #  nασ_above_track-nασ_above
+    δnασ_below=nασ_below_track-nασ_below
+    δnασ_above=nασ_above_track-nασ_above
+    βασ_below_track=[βασ_[1] for βασ_ in βασ]
+    βασ_above_track=[βασ_[2] for βασ_ in βασ]
+    δβασ_below=βασ_below_track-βασ_below
+    δβασ_above=βασ_above_track-βασ_above
+    # we then compute the change of δβ
+    # we use dot to sum, so we drop ασ
+    δK_below=dot(∂Kασ∂nX_below,δnασ_below)+dot(∂Kασ∂βX_below,δβασ_below)
+    δK_above=dot(∂Kασ∂nX_above,δnασ_above)+dot(∂Kασ∂βX_above,δβασ_above)
+    δK=δK_below+δK_above
+    K_track=K0+δK
+    # now, we need to track A  part, Aασ_below
+    Aασ_below_track=Aασ_below + ∂Aασ∂nX_below.*δnασ_below + ∂Aασ∂βX_below.*δβασ_below
+    Aασ_above_track=Aασ_above + ∂Aασ∂nX_above.*δnασ_above + ∂Aασ∂βX_above.*δβασ_above
+    g33matwασ=[cal_g33_mat_(cal_Gfull(nασ[i],G12ασ[i],g12ασ[i],Aασ_below_track[i],Aασ_above_track[i],Slocασ[i])) for i in 1:N_spin_orbital]
+    Eloc=sum([coefficient*expt(w,cal_Xmatfull(pmatwασ,g33matwασ,idx1,idx2)) for (idx1,idx2,coefficient) in interaction ])
+    E=Eloc+K_track
+end
+
+
+
+# we also directly compute the total energy to check with gradient
+"""
+we merge the momentum part and local part together
+We use the old code and function to ensure it is correct. (but with scaling)
+now, we check derivatives
+U=2.0
+interaction=[(1,2,U),(1,3,U),(1,4,U),(2,3,U),(2,4,U),(3,4,U)]
+momentum_info=cal_momentum_part_in_nβ(nασ,G12ασ,x,βασ,eασ)
+E_total=cal_total_energy(G12ασ,x,βασ,momentum_info,interaction)
+∂E∂G12,∂E∂x,∂E∂βασ=gradient((G12ασ,x,βασ)->cal_total_energy(G12ασ,x,βασ,momentum_info,interaction),G12ασ,x,βασ)
+E_total_check=cal_total_energy_direct(G12ασ,x,βασ,eασ,interaction)
+E_total_check-E_total
+# now, we check derivatives
+δG12=rand(4)*1e-5
+G12ασ_new=G12ασ+δG12
+E_total_new=cal_total_energy_direct(G12ασ_new,x,βασ,eασ,interaction)
+E_total_new=cal_total_energy(G12ασ_new,x,βασ,momentum_info,interaction)
+(E_total_new-E_total_check)/dot(∂E∂G12,δG12)
+# so the gradient is correct regarding the function itsself, but not same with direct, so we should do a term by term comparision
+δx=rand(11)*1e-6
+x_new=x+δx
+E_total_new=cal_total_energy_direct(G12ασ,x_new,βασ,eασ,interaction)
+E_total_new=cal_total_energy(G12ασ,x_new,βασ,momentum_info,interaction)
+(E_total_new-E_total_check)/dot(∂E∂x,δx)
+δβασ=[rand(2)*1e-4 for _ in 1:4]
+βασ_new=βασ.+δβασ
+E_total_new=cal_total_energy_direct(G12ασ,x,βασ_new,eασ,interaction)
+E_total_new=cal_total_energy(G12ασ,x,βασ_new,momentum_info,interaction)
+(E_total_new-E_total)/sum(dot.(∂E∂βασ,δβασ))
+# so the gradient is ok, we just need to make soe cal_total_energy is consistent
+# so the problem is the cal_total_energy direct, I foget to update S, now, things are consistent.
+we now add Eloc and K
+"""
+function cal_total_energy_direct(G12ασ,x,βασ,nασ,eασ,interaction)
+    # we first take the cal_momemtum_part(nασ,G12ασ,x,βασ,eασ), but with the scaled cal_w_scaled
+    N_spin_orbital=length(nασ)
+    w=cal_w_scaled(x,nασ,G12ασ)
+    pmatwασ,g12matwSασ=cal_p_g12_mat(G12ασ)
+    g12ασ=[expt(w,cal_Xmatfull(pmatwασ,g12matwSασ,i)) for i in 1:N_spin_orbital]
+    Slocασ=cal_Slocασ(nασ,G12ασ,g12ασ)
+    Δασ=cal_Δασ(g12ασ,Slocασ)
+    Aασ=[]
+    αασ=[]
+    nk=[]
+    # we don't need derivatives
+    K0=0                        # kinecit energy
+    for i in 1:N_spin_orbital
+        Aασ_,αασ_,nk_=cal_Aασ_αασ_nk_(nασ[i],Δασ[i],βασ[i],eασ[i])
+        K0ασ_=mean(nk_[1].*eασ[i][1])*nασ[i]+mean(nk_[2].*eασ[i][2])*(1-nασ[i])
+        K0+=K0ασ_
+        push!(Aασ,Aασ_)
+        push!(αασ,αασ_)
+        push!(nk,nk_)
+    end
+    # now, we move to cal_energy_for_diff_old
+    g33matwασ=[cal_g33_mat_(cal_Gfull(nασ[i],G12ασ[i],g12ασ[i],Aασ[i],Slocασ[i])) for i in 1:N_spin_orbital]
+    Eloc=sum([coefficient*expt(w,cal_Xmatfull(pmatwασ,g33matwασ,idx1,idx2)) for (idx1,idx2,coefficient) in interaction ])
+    Eloc+K0,Eloc,K0
+end
+
+function cal_total_energy_direct_v2(G12ασ,x,βασ,nασ,eασ,interaction)
+    # we first take the cal_momemtum_part(nασ,G12ασ,x,βασ,eασ), but with the scaled cal_w_scaled
+    N_spin_orbital=length(nασ)
+    # we add restriction of G12ασ
+    G12ασ=restrict_G12ασ(G12ασ)
+    w=cal_w_scaled_v2(x,nασ,G12ασ)
+    pmatwασ,g12matwSασ=cal_p_g12_mat(G12ασ)
+    g12ασ=[expt(w,cal_Xmatfull(pmatwασ,g12matwSασ,i)) for i in 1:N_spin_orbital]
+    Slocασ=cal_Slocασ(nασ,G12ασ,g12ασ)
+    Δασ=cal_Δασ(g12ασ,Slocασ)
+    Aασ=[]
+    αασ=[]
+    nk=[]
+    # we don't need derivatives
+    K0=0                        # kinecit energy
+    for i in 1:N_spin_orbital
+        Aασ_,αασ_,nk_=cal_Aασ_αασ_nk_(nασ[i],Δασ[i],βασ[i],eασ[i])
+        K0ασ_=mean(nk_[1].*eασ[i][1])*nασ[i]+mean(nk_[2].*eασ[i][2])*(1-nασ[i])
+        K0+=K0ασ_
+        push!(Aασ,Aασ_)
+        push!(αασ,αασ_)
+        push!(nk,nk_)
+    end
+    # now, we move to cal_energy_for_diff_old
+    g33matwασ=[cal_g33_mat_(cal_Gfull(nασ[i],G12ασ[i],g12ασ[i],Aασ[i],Slocασ[i])) for i in 1:N_spin_orbital]
+    Eloc=sum([coefficient*expt(w,cal_Xmatfull(pmatwασ,g33matwασ,idx1,idx2)) for (idx1,idx2,coefficient) in interaction ])
+    Eloc+K0,Eloc,K0
+end
+
+
 
 # now, we compute gradient
 """
@@ -862,16 +1213,27 @@ end
     αασ,Δασ,Aασ,K0,∂K∂Δασ,∂K∂Aασ=cal_momemtum_part(nασ,G12ασ,x,βασ,eασ)
     gradient((G12ασ,x,Aασ)->cal_energy_for_diff(G12ασ,x,Aασ,nασ,∂K∂Δασ,∂K∂Aασ,interaction),G12ασ,x,Aασ)
 ## we assume they are reasonable
+# we now directly compute the gradients
+# return both the energy and the gradients
 """
 function cal_gradient(G12ασ,x,βασ,nασ,eασ,interaction)
-    # we can now check this derivatives from the previous numerical minimization
-    # we first load the parameters to check
-    # it seems the gradients are reasonably close to zero
-    # there are some problem for large U, check the reason
-    αασ,Δασ,Aασ,K0,∂K∂Δασ,∂K∂Aασ=cal_momemtum_part(nασ,G12ασ,x,βασ,eασ)
-    ∂E∂G12ασ,∂E∂x,∂E∂Aασ= gradient((G12ασ,x,Aασ)->cal_energy_for_diff(G12ασ,x,Aασ,nασ,∂K∂Δασ,∂K∂Aασ,interaction),G12ασ,x,Aασ)
-    ∂E∂G12ασ,∂E∂x,∂E∂Aασ,αασ,Δασ,Aασ,K0,∂K∂Δασ,∂K∂Aασ
+    momentum_info=cal_momentum_part_in_nβ(nασ,G12ασ,x,βασ,eασ)
+    ∂E∂G12,∂E∂x,∂E∂βασ=gradient((G12ασ,x,βασ)->cal_total_energy(G12ασ,x,βασ,momentum_info,interaction),G12ασ,x,βασ)
 end
+
+function cal_gradient_v2(G12ασ,x,βασ,nασ,eασ,interaction)
+    momentum_info=cal_momentum_part_in_nβ_v2(nασ,G12ασ,x,βασ,eασ)
+    ∂E∂G12,∂E∂x,∂E∂βασ=gradient((G12ασ,x,βασ)->cal_total_energy_v2(G12ασ,x,βασ,momentum_info,interaction),G12ασ,x,βασ)
+end
+# function cal_gradient(G12ασ,x,βασ,nασ,eασ,interaction)
+#     # we can now check this derivatives from the previous numerical minimization
+#     # we first load the parameters to check
+#     # it seems the gradients are reasonably close to zero
+#     # there are some problem for large U, check the reason
+#     αασ,Δασ,Aασ,K0,∂K∂Δασ,∂K∂Aασ=cal_momemtum_part(nασ,G12ασ,x,βασ,eασ)
+#     ∂E∂G12ασ,∂E∂x,∂E∂Aασ= gradient((G12ασ,x,Aασ)->cal_energy_for_diff(G12ασ,x,Aασ,nασ,∂K∂Δασ,∂K∂Aασ,interaction),G12ασ,x,Aασ)
+#     ∂E∂G12ασ,∂E∂x,∂E∂Aασ,αασ,Δασ,Aασ,K0,∂K∂Δασ,∂K∂Aασ
+# end
 
 
 """
@@ -884,19 +1246,20 @@ interaction=[(1,2,U),(1,3,U),(1,4,U),(2,3,U),(2,4,U),(3,4,U)]
 G12ασ,x,βασ,∂E∂G12ασ,∂E∂x,∂E∂Aασ=solve_N3(G12ασ,x,βασ,nασ,eασ,interaction)
 obs=cal_obs(G12ασ,x,βασ,nασ,eασ,interaction)
 saveObs(obs,data_dir,tag,∂E∂G12ασ,∂E∂x,∂E∂Aασ)
+# we need to update these two functions
 """
-function solve_N3(G12ασ,x,βασ,nασ,eασ,interaction; λG=0.01,λx=0.001,λβ=0.1,N_iter=100)
-    local ∂E∂G12ασ,∂E∂x,∂E∂Aασ
-    for i in 1:N_iter
-        ∂E∂G12ασ,∂E∂x,∂E∂Aασ,αασ,Δασ,Aασ,K0,∂K∂Δασ,∂K∂Aασ=cal_gradient(G12ασ,x,βασ,nασ,eασ,interaction)
-        G12ασ=G12ασ-λG*∂E∂G12ασ
-        x=x-λx*∂E∂x
-        βασ=βασ-λβ*∂E∂Aασ
-        x=constraint_para_x(x,G12ασ,nασ)
-        print("i $(i) βασ $(βασ)\n i $(i) x $(x) \n")
-    end
-    G12ασ,x,βασ,∂E∂G12ασ,∂E∂x,∂E∂Aασ
-end
+# function solve_N3(G12ασ,x,βασ,nασ,eασ,interaction; λG=0.01,λx=0.001,λβ=0.1,N_iter=100)
+#     local ∂E∂G12ασ,∂E∂x,∂E∂Aασ
+#     for i in 1:N_iter
+#         ∂E∂G12ασ,∂E∂x,∂E∂Aασ,αασ,Δασ,Aασ,K0,∂K∂Δασ,∂K∂Aασ=cal_gradient(G12ασ,x,βασ,nασ,eασ,interaction)
+#         G12ασ=G12ασ-λG*∂E∂G12ασ
+#         x=x-λx*∂E∂x
+#         βασ=βασ-λβ*∂E∂Aασ
+#         x=constraint_para_x(x,G12ασ,nασ)
+#         print("i $(i) βασ $(βασ)\n i $(i) x $(x) \n")
+#     end
+#     G12ασ,x,βασ,∂E∂G12ασ,∂E∂x,∂E∂Aασ
+# end
 
 # finnally, we calcuate the observables
 """
@@ -904,48 +1267,49 @@ this will serve as a complete illustration of the calculation
 E,Eloc,Ek,local_info,αασ,βασ,Δασ,Aασ,Slocασ,G12ασ,x,w,nk,nασ,eασ=cal_obs(G12ασ,x,βασ,nασ,eασ,interaction)
 obs=cal_obs(G12ασ,x,βασ,nασ,eασ,interaction)
 """
-function cal_obs(G12ασ,x,βασ,nασ,eασ,interaction)
-    N_spin_orbital=length(nασ)
-    w=cal_w(x,nασ,G12ασ)
-    pmatwασ,g12matwSασ=cal_p_g12_mat(G12ασ)
-    g12ασ=[expt(w,cal_Xmatfull(pmatwασ,g12matwSασ,i)) for i in 1:N_spin_orbital]
-    Slocασ=cal_Slocασ(nασ,G12ασ,g12ασ)
-    Δασ=cal_Δασ(g12ασ,Slocασ)
-    Aασ=[]
-    αασ=[]
-    nk=[]
-    Ek=0                        # kinecit energy
-    for i in 1:N_spin_orbital
-        Aασ_,αασ_,nk_=cal_Aασ_αασ_nk_(nασ[i],Δασ[i],βασ[i],eασ[i])
-        Ekασ_=mean(nk_[1].*eασ[i][1])*nασ[i]+mean(nk_[2].*eασ[i][2])*(1-nασ[i])
-        Ek+=Ekασ_
-        push!(Aασ,Aασ_)
-        push!(αασ,αασ_)
-        push!(nk,nk_)
-    end
-    g33matwασ=[cal_g33_mat_(cal_Gfull(nασ[i],G12ασ[i],g12ασ[i],Aασ[i],Slocασ[i])) for i in 1:N_spin_orbital]
-    # (idx1,idx2,coefficient,expt_nidx1_nidx2)
-    local_info=[[idx1,idx2,coefficient,expt(w,cal_Xmatfull(pmatwασ,g33matwασ,idx1,idx2))] for (idx1,idx2,coefficient) in interaction ]
-    Eloc=sum([coefficient*nn for (idx1,idx2,coefficient,nn) in local_info ])
-    E=Ek+Eloc
-    E,Eloc,Ek,local_info,αασ,βασ,Δασ,Aασ,Slocασ,G12ασ,x,w,nk,nασ,eασ
-end
+# function cal_obs(G12ασ,x,βασ,nασ,eασ,interaction)
+#     N_spin_orbital=length(nασ)
+#     w=cal_w(x,nασ,G12ασ)
+#     pmatwασ,g12matwSασ=cal_p_g12_mat(G12ασ)
+#     g12ασ=[expt(w,cal_Xmatfull(pmatwασ,g12matwSασ,i)) for i in 1:N_spin_orbital]
+#     Slocασ=cal_Slocασ(nασ,G12ασ,g12ασ)
+#     Δασ=cal_Δασ(g12ασ,Slocασ)
+#     Aασ=[]
+#     αασ=[]
+#     nk=[]
+#     Ek=0                        # kinecit energy
+#     for i in 1:N_spin_orbital
+#         Aασ_,αασ_,nk_=cal_Aασ_αασ_nk_(nασ[i],Δασ[i],βασ[i],eασ[i])
+#         Ekασ_=mean(nk_[1].*eασ[i][1])*nασ[i]+mean(nk_[2].*eασ[i][2])*(1-nασ[i])
+#         Ek+=Ekασ_
+#         push!(Aασ,Aασ_)
+#         push!(αασ,αασ_)
+#         push!(nk,nk_)
+#     end
+#     g33matwασ=[cal_g33_mat_(cal_Gfull(nασ[i],G12ασ[i],g12ασ[i],Aασ[i],Slocασ[i])) for i in 1:N_spin_orbital]
+#     # (idx1,idx2,coefficient,expt_nidx1_nidx2)
+#     local_info=[[idx1,idx2,coefficient,expt(w,cal_Xmatfull(pmatwασ,g33matwασ,idx1,idx2))] for (idx1,idx2,coefficient) in interaction ]
+#     Eloc=sum([coefficient*nn for (idx1,idx2,coefficient,nn) in local_info ])
+#     E=Ek+Eloc
+#     E,Eloc,Ek,local_info,αασ,βασ,Δασ,Aασ,Slocασ,G12ασ,x,w,nk,nασ,eασ
+# end
 
-"""
-mainly restrict x that w2 are postive
-"""
-function constraint_para_x(x,G12ασ,nασ)
-    N_spin_orbital=length(nασ)
-    w02=cal_w02(cal_neffασ(nασ,G12ασ))
-    VΓη,ηToIdx=__global_VΓη_ηToIdx__[N_spin_orbital]
-    k=VΓη*x
-    k0,knorm=cal_k0_knorm(k)
-    kmaxnorm=cal_maxnorm(w02,k0)*(1-1E-8)
-    if(knorm>=kmaxnorm)
-        x=kmaxnorm/knorm*x
-    end    
-    x
-end
+# """
+# mainly restrict x that w2 are postive
+# we have a new approach now
+# """
+# function constraint_para_x(x,G12ασ,nασ)
+#     N_spin_orbital=length(nασ)
+#     w02=cal_w02(cal_neffασ(nασ,G12ασ))
+#     VΓη,ηToIdx=__global_VΓη_ηToIdx__[N_spin_orbital]
+#     k=VΓη*x
+#     k0,knorm=cal_k0_knorm(k)
+#     kmaxnorm=cal_maxnorm(w02,k0)*(1-1E-8)
+#     if(knorm>=kmaxnorm)
+#         x=kmaxnorm/knorm*x
+#     end    
+#     x
+# end
 
 
 function loadAsSpinOrbital(filename_base,qauntity_name,N_spin_orbital)

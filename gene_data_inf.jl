@@ -34,7 +34,6 @@ end
 
 # doped case
 
-
 nσs=0.5:-0.01:0.01
 nσs=0.5:-0.0001:0.49
 nσ_list=[[nσ_,nσ_] for nσ_ in nσs]

@@ -17,6 +17,19 @@ function gene_spline_band(filename)
     index=collect(linspace(0,1,N_sample))
     return Spline1D(index,data)
 end
+# this is not useful for the landau level
+# """
+# p(ϵ<E)~E
+# use to compute DOE
+# p_e_fn=gene_spline_band_inv("$(phi_B_data)/phi_B_$(tag)_process.dat")
+# filename="$(phi_B_data)/phi_B_$(tag)_process.dat"
+# """
+# function gene_spline_band_inv(filename)
+#     data=reshape(loadData(filename),:)
+#     N_sample=size(data)[1]
+#     index=collect(linspace(0,1,N_sample))
+#     return Spline1D(data,index)
+# end
 
 """
 e_fn=inf_fn

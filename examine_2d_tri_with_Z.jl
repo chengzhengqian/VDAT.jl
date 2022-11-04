@@ -11,8 +11,8 @@ e_fn=gene_spline_band("./es_2d_tri.dat")
 # end
 # nσ_list=gene_density_list(nσs)
 nσ_list=[[0.2,0.8],[0.4,0.6],[0.3,0.7],[0.5,0.5]]
-for nσ in nσ_list
-# for nσ in [[0.5,0.5]]
+# for nσ in nσ_list#
+for nσ in [[0.1,0.9]]
     print("nσ is $(nσ)\n")
     ϵsσ=[gene_ϵs(e_fn,nσ[1]),gene_ϵs(e_fn,nσ[2])]
     ϵfσ=e_fn.(nσ)
@@ -24,8 +24,10 @@ for nσ in nσ_list
 end
 
 
-for nσ in nσ_list
-    data=[(0.0,1.0,1.0),[(U,load_result(U,nσ,data_dir)[(end-1):end]...) for U in 0.1:0.1:20.0]...]
+# for nσ in nσ_list
+for nσ in  [[0.1,0.9]]
+    data=[(0.0,1.0,1.0),[(U,load_result(U,nσ,data_dir)[(end-1):end]...)
+                         for U in 0.1:0.1:20.0]...]
     saveData(data,"$(data_dir)/Z_up_Z_dn_ns_$(nσ[1])_$(nσ[2]).dat")
 end
 
