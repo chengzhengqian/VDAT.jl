@@ -38,7 +38,8 @@ include("./gene_code/g0fullIngG12.jl")
 # sloc1,sloc2=cal_sloc11sloc12(nloc,g012,g12)
 # r=cal_rIns11s12(sloc1,sloc2)
 # Δ=cal_delta(g12,sloc1,sloc2)
-# c=cal_chalf(nloc,Δ,sloc1,sloc2)
+# c=cal_chalf(nloc,Δ,sloc1,sloc2) # this is wrong, use r are guments
+# c=cal_chalf(nloc,Δ,r) # this is the correct version
 # g012_check=cal_g012Incr(nloc,Δ,r,c)
 # g011_check=cal_g011Incr(nloc,Δ,r,c)
 # just A block of g0, 

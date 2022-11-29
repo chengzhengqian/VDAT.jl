@@ -1225,6 +1225,7 @@ function cal_gradient_v2(G12ασ,x,βασ,nασ,eασ,interaction)
     momentum_info=cal_momentum_part_in_nβ_v2(nασ,G12ασ,x,βασ,eασ)
     ∂E∂G12,∂E∂x,∂E∂βασ=gradient((G12ασ,x,βασ)->cal_total_energy_v2(G12ασ,x,βασ,momentum_info,interaction),G12ασ,x,βασ)
 end
+
 # function cal_gradient(G12ασ,x,βασ,nασ,eασ,interaction)
 #     # we can now check this derivatives from the previous numerical minimization
 #     # we first load the parameters to check

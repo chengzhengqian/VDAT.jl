@@ -303,7 +303,7 @@ regulate_Δασ(x,y)=regulate_Δασ_1(x,y)
 # all derivatives are in terms of n,β 
         (nασ,Δασ,nασ_below,nασ_above,αασ_below,αασ_above,βασ_below,βασ_above,nkασ_below,nkασ_above,Aασ_below,Aασ_above,Kασ_below,Kασ_above,∂Kασ∂nX_below,∂Kασ∂nX_above,∂Kασ∂βX_below,∂Kασ∂βX_above,∂Aασ∂nX_below,∂Aασ∂nX_above,∂Aασ∂βX_below,∂Aασ∂βX_above)=cal_momentum_derivatives(nασ,G12ασ,x,βασ,eασ,regulate_knorm_1,regulate_Δασ_1)
 """
-function cal_momentum_derivatives(nασ,G12ασ,x,βασ,eασ,regulate_knorm,regulate_G12,regulate_Δασ)
+ function cal_momentum_derivatives(nασ,G12ασ,x,βασ,eασ,regulate_knorm,regulate_G12,regulate_Δασ)
     N_spin_orbital=length(nασ)
     w=cal_w(x,nασ,G12ασ,regulate_knorm)
     G12ασ=regulate_G12.(G12ασ)
@@ -390,9 +390,9 @@ regulate_G12_1(10)
 """
 function regulate_G12_1(x)
     # 0.5*abs(sin(x/0.5))
-    Gmax=0.5
+    ΔG=1e-3
+    Gmax=0.5-ΔG
     Gmin=0.3
-    ΔG=0.02
     if(x>Gmax)
         Gmax+ΔG*(1-exp(Gmax-x))
     elseif(x<Gmin)

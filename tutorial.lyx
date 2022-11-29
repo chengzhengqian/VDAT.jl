@@ -1,0 +1,1271 @@
+#LyX 2.3 created this file. For more info see http://www.lyx.org/
+\lyxformat 544
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\begin_preamble
+\usepackage[all]{xy}
+\usepackage{listings}
+\lstset{inputencoding=utf8}
+\lstset{extendedchars=\true}
+\end_preamble
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry true
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\use_minted 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+The tutorial of VDAT.jl 
+\end_layout
+
+\begin_layout Section
+Background
+\end_layout
+
+\begin_layout Standard
+VDAT.jl implements the VDAT (variational discrete action theory).
+ 
+\end_layout
+
+\begin_layout Standard
+At the current stage, we implement VDAT within SCDA( self-consistent cannonical
+ discrete action theory) using the G-type SPD (sequential product density
+ matrix) with 
+\begin_inset Formula $\mathcal{N}=3$
+\end_inset
+
+ for a general one-band model.
+\end_layout
+
+\begin_layout Standard
+The essential idea is to use the trial wave-function 
+\begin_inset Formula 
+\begin{equation}
+|\psi\rangle=\exp\left(\sum_{k\sigma}\gamma_{k\sigma}\hat{n}_{k\sigma}\right)\prod_{i}\left(1+gn_{i\uparrow}n_{i\downarrow}\right)|\phi_{0}\rangle,\label{eq:gn3}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+to solve the one band Hubbard model 
+\begin_inset Formula 
+\[
+H=\sum_{k\sigma}\epsilon_{k\sigma}\hat{n}_{k\sigma}+U\sum_{i}\hat{n}_{i\uparrow}\hat{n}_{i\downarrow}.
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Eq (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:gn3"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+) is designed to improve over the GWF (Gutzwiller wave-function) 
+\begin_inset Formula $\prod_{i}\left(1+gn_{i\uparrow}n_{i\downarrow}\right)|\phi_{0}\rangle$
+\end_inset
+
+ , which captures the well the metal phase, but fails to describe the insulator
+ phase quantitatively.
+ The kinetic projector 
+\begin_inset Formula $\exp\left(\sum_{k\sigma}\gamma_{k\sigma}\hat{n}_{k\sigma}\right)$
+\end_inset
+
+ is designed to fix the well-known problem of GWF in 
+\begin_inset Formula $d=\infty$
+\end_inset
+
+, i.e, the insulator phase is just a collection of atoms.
+ The form can be motivated from that fact that applying kinetic projector
+ to an collection of atomic, virtual hopping can be effectively described.
+ Indeed, this ansatz captures well the Mott insulator phase, and moreover,
+ improves over the metal phase quantitatively.
+ Baeriswyl-Gutzwiller has a similar form of Eq(
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:gn3"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+), which uses 
+\begin_inset Formula $\exp\left(\alpha\sum_{k\sigma}\epsilon_{k\sigma}\hat{n}_{k\sigma}\right)$
+\end_inset
+
+ instead of 
+\begin_inset Formula $\exp\left(\sum_{k\sigma}\gamma_{k\sigma}\hat{n}_{k\sigma}\right)$
+\end_inset
+
+ and has been proposed by Dzierzaw et al.
+ The detailed history of Eq(
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:gn3"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+) and its generalization form, i.e, SPD, could be found in (Phys.
+ Rev.
+ Lett.
+ 126, 206402, Phys.
+ Rev.
+ B 103, 195138)
+\end_layout
+
+\begin_layout Standard
+The key results of VDAT within SCDA is that Eq(
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:gn3"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+), and more generally, any SPD with disjoint local projectors, can be exactly
+ evaluated in 
+\begin_inset Formula $d=\infty$
+\end_inset
+
+.
+ On finite dimensions, one can treat SCDA as an approximation, as illustrated
+ in this tutorial, or use some expansion scheme to systematically improve
+ over SCDA.
+ The theoretical framework of this expansion scheme has been developed,
+ and hopefully will be implemented this package in future.
+ 
+\end_layout
+
+\begin_layout Section
+Installation
+\end_layout
+
+\begin_layout Standard
+One should follow the following procedure:
+\end_layout
+
+\begin_layout Enumerate
+Install the julia.
+ See https://julialang.org/ for details.
+\end_layout
+
+\begin_layout Enumerate
+Clone the VDAT.jl repository to some local directory.
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+git clone https://github.com/chengzhengqian/VDAT.jl ./
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Start julia REPL from the previous directory, and install the following
+ package within the REPL:
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+using Pkg
+\end_layout
+
+\begin_layout Plain Layout
+
+Pkg.add(
+\begin_inset Quotes eld
+\end_inset
+
+Optim
+\begin_inset Quotes erd
+\end_inset
+
+)
+\end_layout
+
+\begin_layout Plain Layout
+
+Pkg.add(
+\begin_inset Quotes eld
+\end_inset
+
+Dierckx
+\begin_inset Quotes erd
+\end_inset
+
+)
+\end_layout
+
+\begin_layout Plain Layout
+
+Pkg.add(
+\begin_inset Quotes eld
+\end_inset
+
+DelimitedFiles
+\begin_inset Quotes erd
+\end_inset
+
+)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Load the VDAT.jl library using 
+\begin_inset listings
+inline false
+status open
+
+\begin_layout Plain Layout
+
+include("./vdat.jl")
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Usage of the package
+\end_layout
+
+\begin_layout Standard
+VDAT.jl solve the one band Hubbard model with given 
+\begin_inset Formula $n_{\uparrow}$
+\end_inset
+
+ and 
+\begin_inset Formula $n_{\downarrow}$
+\end_inset
+
+.
+ So the total density is given by 
+\begin_inset Formula 
+\[
+n=n_{\uparrow}+n_{\downarrow},
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+and magnetization is given by
+\begin_inset Formula 
+\[
+m=n_{\uparrow}-n_{\downarrow}.
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We first illustrate how to solve the model in 
+\begin_inset Formula $d=\infty$
+\end_inset
+
+ at half-filling.
+ The complete code can be found in example_inf.jl and example_2d.jl
+\end_layout
+
+\begin_layout Paragraph
+Load the band information
+\end_layout
+
+\begin_layout Standard
+Code:
+\end_layout
+
+\begin_layout Standard
+e_fn=gene_spline_band("./es_inf.dat") 
+\end_layout
+
+\begin_layout Standard
+Document:
+\end_layout
+
+\begin_layout Standard
+To specify the band structure, i.e.
+ 
+\begin_inset Formula $D\left(\epsilon\right)$
+\end_inset
+
+ , we sample a set of energy points using 
+\begin_inset Formula $D\left(\epsilon\right)$
+\end_inset
+
+ as the distribution.
+ We then sort these energies and store them in a local file.
+ Call gene_spline_band over this file will then create a spline function
+ which can then be used to generate the discretization of the corresponding
+ band.
+\end_layout
+
+\begin_layout Paragraph
+Specify the density and compute the discretized energy points
+\end_layout
+
+\begin_layout Standard
+Code:
+\end_layout
+
+\begin_layout Standard
+nσ=[0.5,0.5] 
+\end_layout
+
+\begin_layout Standard
+ϵsσ=[gene_ϵs(e_fn,nσ[1]),gene_ϵs(e_fn,nσ[2])] 
+\end_layout
+
+\begin_layout Standard
+Document:
+\end_layout
+
+\begin_layout Standard
+Here, 
+\begin_inset Formula $n\sigma\left[1\right]$
+\end_inset
+
+ is the density for spin up orbital and 
+\begin_inset Formula $n\sigma\left[2\right]$
+\end_inset
+
+ for spin down.
+ And similar convention is used for other spin dependent quantities.
+ And 
+\begin_inset Formula $ϵsσ$
+\end_inset
+
+ will then store the discretized band energy points.
+\end_layout
+
+\begin_layout Paragraph
+Specify the initial variational parameters.
+\end_layout
+
+\begin_layout Standard
+Code:
+\end_layout
+
+\begin_layout Standard
+para=[-0.17,0.7,0.38] 
+\end_layout
+
+\begin_layout Standard
+Document:
+\end_layout
+
+\begin_layout Standard
+Notice the Eq (
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "eq:gn3"
+plural "false"
+caps "false"
+noprefix "false"
+
+\end_inset
+
+) have a much large amount of variational parameters.
+ VDAT.jl internally will analytically minimize most of the parameters in
+ the kinetic projectors, so we just need to specify a few remains.
+ The exact number of the parameters depends on the symmetry of the model,
+ which will be explained later.
+\end_layout
+
+\begin_layout Paragraph
+Running for a given set of 
+\begin_inset Formula $U$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Standard
+Code:
+\end_layout
+
+\begin_layout Standard
+data_dir="./data_inf"
+\end_layout
+
+\begin_layout Standard
+mkdir(data_dir) 
+\end_layout
+
+\begin_layout Standard
+for U in 1.0:1.0:10.0
+\end_layout
+
+\begin_layout Standard
+para,result=solve_vdat(U,ϵsσ,nσ,para;option="half-filling")
+\end_layout
+
+\begin_layout Standard
+save_result(U,ϵsσ,nσ,result,data_dir) 
+\end_layout
+
+\begin_layout Standard
+end 
+\end_layout
+
+\begin_layout Standard
+Document: 
+\end_layout
+
+\begin_layout Standard
+First, we create a directory to store the generated data.
+ We run the Hubbard model for U=1.0 to 10.0 , with given band discretization
+ 
+\begin_inset Formula $\epsilon s\sigma$
+\end_inset
+
+ and density 
+\begin_inset Formula $n\sigma$
+\end_inset
+
+ .
+ For each 
+\begin_inset Formula $U$
+\end_inset
+
+ we use solve_vdat to find the optimal variational parameter and store the
+ results to the directory, specified by data_dir.
+ For each U, it will create three files.
+ Take 
+\begin_inset Formula $U=1.0$
+\end_inset
+
+ as example, we have
+\end_layout
+
+\begin_layout Itemize
+U_1.0_ns_0.5_0.5_E_Ek_Eloc_d.dat : which stores the total energy, kinetic energy,
+ local interacting, double occupancy.
+\end_layout
+
+\begin_layout Itemize
+U_1.0_ns_0.5_0.5_nk_spin_up.dat : momentum density distribution for spin up
+ band.
+ It has two columns: first for energy , and second for density.
+\end_layout
+
+\begin_layout Itemize
+U_1.0_ns_0.5_0.5_nk_spin_dn.dat : momentum density distribution for spin up
+ band.
+ It has two columns, first for energy , and second for density.
+\end_layout
+
+\begin_layout Standard
+Notice we have 3 numbers in para, as we have particle-hole symmetry and
+ spin symmetry, and specified by option="half-filling"
+\end_layout
+
+\begin_layout Paragraph
+Running for a given magnetization at half-filling
+\end_layout
+
+\begin_layout Standard
+It is easily to study the magnetization by specifying the density for spin
+ up and down respectively.
+\end_layout
+
+\begin_layout Standard
+Code:
+\end_layout
+
+\begin_layout Standard
+nσ=[0.4,0.6] 
+\end_layout
+
+\begin_layout Standard
+ϵsσ=[gene_ϵs(e_fn,nσ[1]),gene_ϵs(e_fn,nσ[2])]
+\end_layout
+
+\begin_layout Standard
+para=[-0.17,0.7,0.6,0.37]
+\end_layout
+
+\begin_layout Standard
+for U in 1.0:0.1:10.0 
+\end_layout
+
+\begin_layout Standard
+para,result=solve_vdat(U,ϵsσ,nσ,para;
+\end_layout
+
+\begin_layout Standard
+option="half-filling-magnetization") 
+\end_layout
+
+\begin_layout Standard
+save_result(U,ϵsσ,nσ,result,data_dir) 
+\end_layout
+
+\begin_layout Standard
+end
+\end_layout
+
+\begin_layout Standard
+Document:
+\end_layout
+
+\begin_layout Standard
+First, one need to four variable parameters in this case, and one should
+ set the option in solve_vdat to "half-filling-magnetization"
+\end_layout
+
+\begin_layout Paragraph
+Running for other band structures
+\end_layout
+
+\begin_layout Standard
+As we have demonstrated, we just need to prepare for a set of energy sample
+ points and store them with increasing order.
+\end_layout
+
+\begin_layout Standard
+We take 2d Hubbard model as an example.
+\end_layout
+
+\begin_layout Standard
+Code:
+\end_layout
+
+\begin_layout Standard
+data_dir="./data_2d" 
+\end_layout
+
+\begin_layout Standard
+mkdir(data_dir) 
+\end_layout
+
+\begin_layout Standard
+nσ=[0.5,0.5] 
+\end_layout
+
+\begin_layout Standard
+e_fn=gene_spline_band("./es_2d.dat")
+\end_layout
+
+\begin_layout Standard
+ϵsσ=[gene_ϵs(e_fn,nσ[1]),gene_ϵs(e_fn,nσ[2])] 
+\end_layout
+
+\begin_layout Standard
+para=[-0.17,0.7,0.38] 
+\end_layout
+
+\begin_layout Standard
+for U in 1.0:1.0:16.0
+\end_layout
+
+\begin_layout Standard
+para,result=solve_vdat(U,ϵsσ,nσ,para;option="half-filling")
+\end_layout
+
+\begin_layout Standard
+save_result(U,ϵsσ,nσ,result,data_dir) 
+\end_layout
+
+\begin_layout Standard
+end 
+\end_layout
+
+\begin_layout Standard
+Document:
+\end_layout
+
+\begin_layout Standard
+As we have seen, one just need to change the filename in gene_spline_band.
+\end_layout
+
+\begin_layout Paragraph
+Running for arbitrary 
+\begin_inset Formula $n_{\uparrow}$
+\end_inset
+
+ and 
+\begin_inset Formula $n_{\downarrow}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Code:
+\end_layout
+
+\begin_layout Standard
+data_dir="./data_inf" 
+\end_layout
+
+\begin_layout Standard
+e_fn=gene_spline_band("./es_inf.dat") 
+\end_layout
+
+\begin_layout Standard
+nσ=[0.3,0.4] 
+\end_layout
+
+\begin_layout Standard
+ϵsσ=[gene_ϵs(e_fn,nσ[1]),gene_ϵs(e_fn,nσ[2])]
+\end_layout
+
+\begin_layout Standard
+para=[-0.17,0.7,0.7,0.7,0.7,0.38,0.38] 
+\end_layout
+
+\begin_layout Standard
+for U in 1.0:1.0:10.0
+\end_layout
+
+\begin_layout Standard
+para,result=solve_vdat(U,ϵsσ,nσ,para;option="general")
+\end_layout
+
+\begin_layout Standard
+save_result(U,ϵsσ,nσ,result,data_dir)
+\end_layout
+
+\begin_layout Standard
+end 
+\end_layout
+
+\begin_layout Standard
+Document:
+\end_layout
+
+\begin_layout Standard
+One should change the option to "general".
+ Also, the number of variational parameters is now 7.
+\end_layout
+
+\begin_layout Paragraph
+Running with no magnetization
+\end_layout
+
+\begin_layout Standard
+Code:
+\end_layout
+
+\begin_layout Standard
+e_fn=gene_spline_band("./es_inf.dat") 
+\end_layout
+
+\begin_layout Standard
+nσ=[0.3,0.3] 
+\end_layout
+
+\begin_layout Standard
+ϵsσ=[gene_ϵs(e_fn,nσ[1]),gene_ϵs(e_fn,nσ[2])]
+\end_layout
+
+\begin_layout Standard
+para=[-0.17,0.7,0.7,0.38] 
+\end_layout
+
+\begin_layout Standard
+for U in 1.0:1.0:10.0 
+\end_layout
+
+\begin_layout Standard
+para,result=solve_vdat(U,ϵsσ,nσ,para;option="no-magnetization")
+\end_layout
+
+\begin_layout Standard
+save_result(U,ϵsσ,nσ,result,data_dir) 
+\end_layout
+
+\begin_layout Standard
+end 
+\end_layout
+
+\begin_layout Standard
+Document:
+\end_layout
+
+\begin_layout Standard
+One should use option "no-magnetization".
+ Also, the number of variational parameters is now 4.
+\end_layout
+
+\begin_layout Paragraph
+Collecting data for a given 
+\begin_inset Formula $n_{\sigma}$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Standard
+It is useful to accumulate data as function of 
+\begin_inset Formula $U$
+\end_inset
+
+ for a given 
+\begin_inset Formula $n_{\sigma}$
+\end_inset
+
+ to a single file.
+ 
+\end_layout
+
+\begin_layout Standard
+Code:
+\end_layout
+
+\begin_layout Standard
+data_dir="./data_inf" 
+\end_layout
+
+\begin_layout Standard
+nσ=[0.5,0.5] 
+\end_layout
+
+\begin_layout Standard
+data=[(0.0,0.25),[(U,load_result(U,nσ,data_dir)[end]) 
+\end_layout
+
+\begin_layout Standard
+for U in 1.0:0.1:10.0]...] 
+\end_layout
+
+\begin_layout Standard
+saveData(data,"$(data_dir)/U_d_ns_$(nσ[1])_$(nσ[2]).dat") 
+\end_layout
+
+\begin_layout Standard
+Document:
+\end_layout
+
+\begin_layout Standard
+We use load_result to read the data from the data_dir.
+ Notice we should have computed the corresponding U and 
+\begin_inset Formula $n_{\sigma}$
+\end_inset
+
+ using the previous steps.
+\end_layout
+
+\begin_layout Paragraph
+Plotting the density distribution
+\end_layout
+
+\begin_layout Standard
+Code (in Gnuplot):
+\end_layout
+
+\begin_layout Standard
+plot for [u=1:10] "U_".u.".0_ns_0.5_0.5_nk_spin_dn.dat" u 1:2 t "U=".u
+\end_layout
+
+\begin_layout Standard
+Document:
+\end_layout
+
+\begin_layout Standard
+One should run the command from gnuplot within the data directory.
+\end_layout
+
+\begin_layout Section
+Results
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/chengzhengqian/Documents/research/vdat/hubbard_one_band_analytic/src/plots/nk_spin_up_0.5_0.5_inf.png
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Momentum density distribution of either spin band for 
+\begin_inset Formula $n_{\sigma}=1/2$
+\end_inset
+
+ in 
+\begin_inset Formula $d=\infty$
+\end_inset
+
+ Bethe lattice.
+ One can see the Metal-Insulator Transition (MIT) when the fermi surface
+ jump is zero.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/chengzhengqian/Documents/research/vdat/hubbard_one_band_analytic/src/plots/nk_spin_up_0.4_0.6_inf.png
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Momentum density distribution of spin up band for 
+\begin_inset Formula $n_{\uparrow}=0.4$
+\end_inset
+
+ and 
+\begin_inset Formula $n_{\downarrow}=0.6$
+\end_inset
+
+ in 
+\begin_inset Formula $d=\infty$
+\end_inset
+
+ Bethe lattice
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/chengzhengqian/Documents/research/vdat/hubbard_one_band_analytic/src/plots/nk_spin_dn_0.4_0.6_inf.png
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Momentum density distribution of spin down band for 
+\begin_inset Formula $n_{\uparrow}=0.4$
+\end_inset
+
+ and 
+\begin_inset Formula $n_{\downarrow}=0.6$
+\end_inset
+
+ in 
+\begin_inset Formula $d=\infty$
+\end_inset
+
+ Bethe lattice (We have particle hole symmetry)
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/chengzhengqian/Documents/research/vdat/hubbard_one_band_analytic/src/plots/nk_spin_up_0.1_0.9_inf.png
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Momentum density distribution of spin up band for 
+\begin_inset Formula $n_{\uparrow}=0.1$
+\end_inset
+
+ and 
+\begin_inset Formula $n_{\downarrow}=0.9$
+\end_inset
+
+ in 
+\begin_inset Formula $d=\infty$
+\end_inset
+
+ Bethe lattice
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/chengzhengqian/Documents/research/vdat/hubbard_one_band_analytic/src/plots/nk_spin_dn_0.1_0.9_inf.png
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Momentum density distribution of spin up band for 
+\begin_inset Formula $n_{\uparrow}=0.1$
+\end_inset
+
+ and 
+\begin_inset Formula $n_{\downarrow}=0.9$
+\end_inset
+
+ in 
+\begin_inset Formula $d=\infty$
+\end_inset
+
+ Bethe lattice
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/chengzhengqian/Documents/research/vdat/hubbard_one_band_analytic/src/plots/nk_spin_up_0.5_0.5_2d.png
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Momentum density distribution of either spin band for 
+\begin_inset Formula $n_{\sigma}=1/2$
+\end_inset
+
+ in 
+\begin_inset Formula $d=2$
+\end_inset
+
+ square lattice
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/chengzhengqian/Documents/research/vdat/hubbard_one_band_analytic/src/plots/d_U_0.5_0.5_inf_and_2d.png
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Double occupancy as a function of 
+\begin_inset Formula $U$
+\end_inset
+
+ for 
+\begin_inset Formula $n_{\sigma}=1/2$
+\end_inset
+
+ in 
+\begin_inset Formula $d=2$
+\end_inset
+
+ square lattice and in 
+\begin_inset Formula $d=\infty$
+\end_inset
+
+ Bethe lattice
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/chengzhengqian/Documents/research/vdat/hubbard_one_band_analytic/src/plots/nk_spin_up_0.3_0.4_inf.png
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Momentum density distribution of spin up band for 
+\begin_inset Formula $n_{\uparrow}=0.3$
+\end_inset
+
+ and 
+\begin_inset Formula $n_{\downarrow}=0.4$
+\end_inset
+
+ in 
+\begin_inset Formula $d=\infty$
+\end_inset
+
+ Bethe lattice
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename /home/chengzhengqian/Documents/research/vdat/hubbard_one_band_analytic/src/plots/nk_spin_dn_0.3_0.4_inf.png
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Momentum density distribution of spin down band for 
+\begin_inset Formula $n_{\uparrow}=0.3$
+\end_inset
+
+ and 
+\begin_inset Formula $n_{\downarrow}=0.4$
+\end_inset
+
+ in 
+\begin_inset Formula $d=\infty$
+\end_inset
+
+ Bethe lattice
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document

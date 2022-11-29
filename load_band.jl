@@ -37,6 +37,7 @@ n=0.4
 ϵs=gene_ϵs(e_fn,nσ[1])
 nσ
 ϵsσ=[gene_ϵs(e_fn,nσ[1]),gene_ϵs(e_fn,nσ[2])]
+Here, we use integrate to improve the accuracy.
 """
 function gene_ϵs(e_fn,n;N_samples=40,N_minimal=4)
     index_points_below=max(trunc(Int64,n*N_samples),N_minimal)
@@ -47,3 +48,5 @@ function gene_ϵs(e_fn,n;N_samples=40,N_minimal=4)
     energy_above=[(integrate(e_fn,index_above[i],index_above[i+1]))/(index_above[i+1]-index_above[i]) for i in 1:index_points_above]
     [energy_below,energy_above]
 end
+
+
