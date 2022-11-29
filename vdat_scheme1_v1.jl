@@ -310,20 +310,12 @@ function gene_interaction_degenerate(U,J,N_spin_orbital)
     interaction
 end
 
-N_spin_orbital=14
-update__global__Γασ__(N_spin_orbital)
-# set_Γασ_VΓη_ηToIdx(N_spin_orbital)
-# we only need this part
-symmetry=[collect(1:N_spin_orbital)]
-para=[0.43,2.73,0.77]
-U=2.0
-interaction=gene_interaction_degenerate(U,0,N_spin_orbital)
 
 function cal_energy_half_SU_N(para)
     w=cal_w(para[3],para[3],para[3],0,N_spin_orbital)
-    @time result=cal_energy_with_symmetry(para[1:1],para[2:2],para[2:2],w,e_fn,interaction,symmetry,N_spin_orbital)
+    result=cal_energy_with_symmetry(para[1:1],para[2:2],para[2:2],w,e_fn,interaction,symmetry,N_spin_orbital)
     print("call with $(para), get energy $(result[1])\n")
     result[1]
 end
-
+# we move this to specific files
 # we now need to dressup some code run the minimization and input interface
