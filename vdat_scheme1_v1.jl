@@ -2,8 +2,8 @@
 # it is adopted from vdat_scheme1_5_band_para.jl
 # and provides some interface so we can run on cluster easily
 # so we don't need to compute derivatives in this version.
-using Pkg
-Pkg.add("Optim")
+# using Pkg
+# Pkg.add("Optim")
 
 using LinearAlgebra
 using Statistics
@@ -31,8 +31,6 @@ include("./vdat_scheme1_momentum.jl")
 
 # we first define the band, some basic information
 # we make sure there should be no global parameters
-e_fn=gene_spline_band("./es_inf.dat")
-N_spin_orbital=10
 
 function extend_with_symmetry(para,symmetry,N_spin_oribtal)
     result=zeros(N_spin_orbital)
