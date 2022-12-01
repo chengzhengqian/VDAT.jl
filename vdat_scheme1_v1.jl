@@ -9,7 +9,7 @@ using LinearAlgebra
 using Statistics
 using Combinatorics
 using Roots
-using Zygote
+# using Zygote
 using Optim
 
 include("./include_gene_code.jl")
@@ -122,6 +122,37 @@ function cal_E_eff(U1,U2,U3,Δμ,Γ,N_spin_orbital)
 end
 
 """
+we also need a form that can treat general density
+μ=[1.0,1.0]
+Γ=[1.0,0.0]
+"""
+function cal_E_eff_general(U1,U2,U3,μ,Γ,N_spin_orbital)
+    N_orbital=trunc(Int,N_spin_orbital/2)
+    s=0
+    for orb in 1:(N_orbital)
+        s+=U1*Γ[get_idx(orb,1)]*Γ[get_idx(orb,2)]
+    end    
+    for orb1 in 1:(N_orbital-1)
+        for orb2 in (orb1+1):(N_orbital)
+            s+=U2*Γ[get_idx(orb1,1)]*Γ[get_idx(orb2,2)]
+            s+=U2*Γ[get_idx(orb1,2)]*Γ[get_idx(orb2,1)]
+        end
+    end
+    for orb1 in 1:(N_orbital-1)
+        for orb2 in (orb1+1):(N_orbital)
+            s+=U3*Γ[get_idx(orb1,1)]*Γ[get_idx(orb2,1)]
+            s+=U3*Γ[get_idx(orb1,2)]*Γ[get_idx(orb2,2)]
+        end
+    end
+    # μ=(U1+4*U2+4*U3)/2
+    # μ=(U1+(N_orbital-1)*U2+(N_orbital-1)*U3)/2
+    # exp(-s+μ*N)
+    # s-(μ+Δμ)*sum(Γ)
+    s-dot(μ,Γ)
+end
+
+
+"""
 This follows from cal_E_eff
 Remeber to update the global dictionary first
 cal_Γασ(2,10)
@@ -131,6 +162,14 @@ U1=U2=U3=1.0
 """
 function cal_w(U1,U2,U3,Δμ,N_spin_orbital)
     E_eff_for_w=[cal_E_eff(U1,U2,U3,Δμ,cal_Γασ(i,N_spin_orbital),N_spin_orbital) for i in 1:2^N_spin_orbital]
+    E_eff_min=minimum(E_eff_for_w)
+    w2=exp.(-(E_eff_for_w.-E_eff_min))
+    w2=w2./sum(w2)
+    w=sqrt.(w2)
+end
+
+function cal_w_general(U1,U2,U3,μ,N_spin_orbital)
+    E_eff_for_w=[cal_E_eff_general(U1,U2,U3,μ,cal_Γασ(i,N_spin_orbital),N_spin_orbital) for i in 1:2^N_spin_orbital]
     E_eff_min=minimum(E_eff_for_w)
     w2=exp.(-(E_eff_for_w.-E_eff_min))
     w2=w2./sum(w2)
@@ -308,12 +347,32 @@ function gene_interaction_degenerate(U,J,N_spin_orbital)
     interaction
 end
 
-
-function cal_energy_half_SU_N(para)
-    w=cal_w(para[3],para[3],para[3],0,N_spin_orbital)
-    result=cal_energy_with_symmetry(para[1:1],para[2:2],para[2:2],w,e_fn,interaction,symmetry,N_spin_orbital)
-    print("call with $(para), get energy $(result[1])\n")
-    result[1]
-end
+# we move it to corresponding files
+# function cal_energy_half_SU_N(para)
+#     w=cal_w(para[3],para[3],para[3],0,N_spin_orbital)
+#     result=cal_energy_with_symmetry(para[1:1],para[2:2],para[2:2],w,e_fn,interaction,symmetry,N_spin_orbital)
+#     print("call with $(para), get energy $(result[1])\n")
+#     result[1]
+# end
 # we move this to specific files
 # we now need to dressup some code run the minimization and input interface
+
+"""
+# eg (2),2tg (3)
+symmetry=collect.([1:4,5:10])
+for d orbital, N_spin_orbital=10
+"""
+function gene_interaction_eg_t2g(U,J)
+    interaction=[
+        (1,2, U*2),
+        (1,4,(U-2*J)*2),
+        (1,3,(U-3*J)*2),
+        (5,6,U*3),
+        (5,8,(U-2*J)*6),
+        (5,7,(U-3*J)*6),
+        (1,6,(U-2*J)*12),
+        (1,5,(U-3*J)*12)
+    ]
+end
+
+# we should use the projector with similar tructure
