@@ -9,6 +9,7 @@ using LinearAlgebra
 using Statistics
 using Combinatorics
 using Roots
+using NLsolve
 # using Zygote
 using Optim
 
@@ -376,3 +377,68 @@ function gene_interaction_eg_t2g(U,J)
 end
 
 # we should use the projector with similar tructure
+# another thing is that we may want to fixed the density
+"""
+right now,we use U1,U2,U3 are local parameter, we could make it 
+symmetry=collect.([1:4,5:10])
+n_target=[0.4,0.8]
+U1=U2=U3=1.0
+μtest=[0.0,0.0]
+G12_para=[0.43,0.43]
+β_below_para=β_above_para=[2.0,2.0]
+e_fn
+we could pass the energy point as arguments
+# reduced form
+n_target=[0.25,0.8]
+nασ=extend_with_symmetry(n_target,symmetry,N_spin_orbital)
+eασ=cal_eασ(e_fn,nασ,symmetry)
+U_para=[1.0,1.0,1.0]
+result=cal_energy_with_symmetry_and_given_density(G12_para,β_below_para,β_above_para,n_target,U_para,eασ,interaction,symmetry,N_spin_orbital)
+result[4]
+"""
+function cal_energy_with_symmetry_and_given_density(G12_para,β_below_para,β_above_para,n_target,U_para,eασ,interaction,symmetry,N_spin_orbital;cutoff_n=1e-4,cutoff_Δ=1e-5,cutoff_Sloc=1e-5)
+    N_orbital=trunc(Int,N_spin_orbital/2)
+    U1,U2,U3=U_para
+    # for half-filling parameters
+    μeff=(U1+(N_orbital-1)*U2+(N_orbital-1)*U3)/2
+    G12ασ=cal_G(G12_para,symmetry,N_spin_orbital)
+    βασ=cal_β(β_below_para,β_above_para,symmetry,N_spin_orbital)
+    pmatwασ,g12matwSασ=cal_p_g12_mat(G12ασ)
+    g11matwSασ=cal_g11_mat(G12ασ)
+    function cal_nασ_w(Δμ)
+        w=cal_w_general(U1,U2,U3,extend_with_symmetry(Δμ.+μeff,symmetry,N_spin_orbital),N_spin_orbital)
+        nασ=cal_Xασ(w,pmatwασ,g11matwSασ,symmetry)
+        [nασ[s[1]] for s in symmetry],w
+    end
+    function target!(F,x)
+        F[:]=cal_nασ_w(x)[1]-n_target
+    end
+    res=nlsolve(target!,[0.0,0.0])
+    Δμ=res.zero
+    _,w=cal_nασ_w(Δμ)
+    g12ασ=cal_Xασ(w,pmatwασ,g12matwSασ,symmetry)
+    nασ=cal_Xασ(w,pmatwασ,g11matwSασ,symmetry)
+    # nασ=extend_with_symmetry(n_target,symmetry,N_spin_orbital)
+    Slocασ=cal_Slocασ(nασ,G12ασ,g12ασ)
+    Slocασ=restrict_Slocασ(Slocασ,cutoff=cutoff_Sloc)
+    Δασ=cal_Δασ(g12ασ,Slocασ,nασ)
+    Δασ=restrict_Δασ(Δασ,nασ; cutoff=cutoff_Δ)
+    Aασ_below,Aασ_above,αασ,nk=[Array{Any}(undef,N_spin_orbital) for _ in 1:4]
+    K0=0
+    for term in symmetry
+        i=term[1] 
+        Aασ_below_,Aασ_above_,Kbelow_,Kabove_,αασ_,nk_=cal_Abelow_Aabove_Kbelow_Kabove_αασ_nk_(nασ[i],Δασ[i],βασ[i],eασ[i])
+        K0ασ_=Kbelow_+Kabove_
+        K0+=K0ασ_*length(term)
+        for idx in term
+            Aασ_below[idx]=Aασ_below_
+            Aασ_above[idx]=Aασ_above_
+            αασ[idx]=αασ_
+            nk[idx]=nk_
+        end        
+    end    
+    g33matwασ=[cal_g33_mat_(cal_Gfull(nασ[i],G12ασ[i],g12ασ[i],Aασ_below[i],Aασ_above[i],Slocασ[i])) for i in 1:N_spin_orbital]
+    nn=[expt(w,cal_Xmatfull(pmatwασ,g33matwασ,idx1,idx2)) for (idx1,idx2,coefficient) in interaction]
+    Eloc=sum([interaction[i][3]*nn[i]   for i in 1:length(interaction)])
+    Eloc+K0,Eloc,K0,nασ,nn,αασ,βασ,eασ,Slocασ,Δασ,Aασ_below,Aασ_above,G12ασ,w,nk
+end
