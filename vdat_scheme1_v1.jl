@@ -413,7 +413,7 @@ function cal_energy_with_symmetry_and_given_density(G12_para,β_below_para,β_ab
     function target!(F,x)
         F[:]=cal_nασ_w(x)[1]-n_target
     end
-    res=nlsolve(target!,[0.0,0.0])
+    res=nlsolve(target!,[0.0 for _ in 1:length(n_target)])
     Δμ=res.zero
     _,w=cal_nασ_w(Δμ)
     g12ασ=cal_Xασ(w,pmatwασ,g12matwSασ,symmetry)
